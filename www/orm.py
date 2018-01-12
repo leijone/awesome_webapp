@@ -17,17 +17,34 @@ def create_pool(loop, **kw):
     logging.info('create database connection pool...')
     global __pool
     __pool = yield from aiomysql.create_pool(
+        # host=kw.get('host', 'localhost'),
+        # port=kw.get('port', 3306),
+        # user=kw['user'],
+        # password=kw['password'],
+        # db=kw['db'],
+        # charset=kw.get('charset', 'utf8'),
+        # autocommit=kw.get('autocommit', True),
+        # maxsize=kw.get('maxsize', 10),
+        # minsize=kw.get('minsize', 1),
+        # loop=loop
         host=kw.get('host', 'localhost'),
         port=kw.get('port', 3306),
         user=kw['user'],
         password=kw['password'],
         db=kw['db'],
-        charset=kw.get('charset', 'utf-8'),
+        charset=kw.get('charset', 'utf8'),
         autocommit=kw.get('autocommit', True),
         maxsize=kw.get('maxsize', 10),
         minsize=kw.get('minsize', 1),
         loop=loop
     )
+
+
+async def destory_pool():
+    global pool
+    if pool is not None:
+        pool.close()
+        await pool.wait_closed()
 
 
 # SELECT
@@ -87,22 +104,22 @@ class StringField(Field):
 
 class BooleanField(Field):
     def __init__(self, name=None, default=False):
-        super.__init__(name, 'boolean', False, default)
+        super().__init__(name, 'boolean', False, default)
 
 
 class IntegerField(Field):
     def __init__(self, name=None, primary_key=False, default=0):
-        super.__init__(name, 'bigint', primary_key, default)
+        super().__init__(name, 'bigint', primary_key, default)
 
 
 class FloatField(Field):
     def __init__(self, name=None, primary_key=False, default=0.0):
-        super.__init__(name, 'real', primary_key, default)
+        super().__init__(name, 'real', primary_key, default)
 
 
 class TextField(Field):
     def __init__(self, name=None, default=None):
-        super.__init__(name, 'text', False, default)
+        super().__init__(name, 'text', False, default)
 
 
 class ModelMetaclass(type):
@@ -226,8 +243,8 @@ class Model(dict, metaclass=ModelMetaclass):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
         rows = await execute(self.__insert__, args)
-        if rows !=1:
-            logging.warning('failed to insert record: affected rows: %s' %rows)
+        if rows != 1:
+            logging.warning('failed to insert record: affected rows: %s' % rows)
 
     async def update(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
@@ -241,4 +258,3 @@ class Model(dict, metaclass=ModelMetaclass):
         rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warning('failed to remove by primary key: affected rows: %s' % rows)
-
