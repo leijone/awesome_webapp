@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
+import aiomysql as aiomysql
 
 __author__ = 'ray'
 
 import asyncio, logging
 
-import aiomysql
+
 
 
 def log(sql, args=()):
@@ -17,17 +18,7 @@ def create_pool(loop, **kw):
     logging.info('create database connection pool...')
     global __pool
     __pool = yield from aiomysql.create_pool(
-        # host=kw.get('host', 'localhost'),
-        # port=kw.get('port', 3306),
-        # user=kw['user'],
-        # password=kw['password'],
-        # db=kw['db'],
-        # charset=kw.get('charset', 'utf8'),
-        # autocommit=kw.get('autocommit', True),
-        # maxsize=kw.get('maxsize', 10),
-        # minsize=kw.get('minsize', 1),
-        # loop=loop
-        host=kw.get('host', 'localhost'),
+        host=kw.get('host', '127.0.0.1'),
         port=kw.get('port', 3306),
         user=kw['user'],
         password=kw['password'],
@@ -41,10 +32,9 @@ def create_pool(loop, **kw):
 
 
 async def destory_pool():
-    global pool
-    if pool is not None:
-        pool.close()
-        await pool.wait_closed()
+    if __pool is not None:
+        __pool.close()
+        await __pool.wait_closed()
 
 
 # SELECT
@@ -54,7 +44,7 @@ def select(sql, args, size=None):
     global __pool
     with (yield from __pool) as conn:
         cur = yield from conn.cursor(aiomysql.DictCursor)
-        yield from cur.excute(sql.replace('?', '%s'), args or ())
+        yield from cur.execute(sql.replace('?', '%s'), args or ())
         if size:
             rs = yield from cur.fetchmany(size)
         else:
@@ -71,7 +61,7 @@ def execute(sql, args):
     with (yield from __pool) as conn:
         try:
             cur = yield from conn.cursor()
-            yield from cur.excute(sql.replace('?', '%s'), args)
+            yield from cur.execute(sql.replace('?', '%s'), args)
             affected = cur.rowcount
             yield from cur.close()
         except BaseException as e:
@@ -185,7 +175,7 @@ class Model(dict, metaclass=ModelMetaclass):
     def getValueOrDefault(self, key):
         value = getattr(self, key, None)
         if value is None:
-            field = self.__mapping__[key]
+            field = self.__mappings__[key]
             if field.default is not None:
                 value = field.default() if callable(field.default) else field.default
                 logging.debug('useing defaule value for %s: %s' % (key, str(value)))
